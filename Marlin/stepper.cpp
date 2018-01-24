@@ -72,7 +72,7 @@ block_t* Stepper::current_block = NULL;  // A pointer to the block currently bei
   bool Stepper::abort_on_endstop_hit = false;
 #endif
 
-#if ENABLED(X_DUAL_ENDSTOPS) || ENABLED(Y_DUAL_ENDSTOPS) || ENABLED(Z_DUAL_ENDSTOPS)
+#if ENABLED(X_DUAL_ENDSTOPS) || ENABLED(Y_DUAL_ENDSTOPS) || ENABLED(Z_DUAL_ENDSTOPS) || ENABLED(Z_QUAD_STEPPER_DRIVERS)
   bool Stepper::performing_homing = false;
 #endif
 
@@ -93,6 +93,9 @@ int16_t Stepper::cleaning_buffer_counter = 0;
 #endif
 #if ENABLED(Z_DUAL_ENDSTOPS)
   bool Stepper::locked_z_motor = false, Stepper::locked_z2_motor = false;
+#endif
+#if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+  bool Stepper::locked_z_motor = false, Stepper::locked_z2_motor = false, Stepper::locked_z3_motor = false, Stepper::locked_z4_motor = false;
 #endif
 
 long Stepper::counter_X = 0,
@@ -172,6 +175,27 @@ volatile long Stepper::endstops_trigsteps[XYZ];
     }
 #endif
 
+#if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+  #define LOCKED_Z_MOTOR  locked_z_motor
+  #define LOCKED_Z2_MOTOR locked_z2_motor
+  #define LOCKED_Z3_MOTOR locked_z3_motor
+  #define LOCKED_Z4_MOTOR locked_z4_motor
+  #define QUAD_Z_APPLY_STEP(v)                                                                                                                       \
+    if (performing_homing) {                                                                                                                         \
+      if (!LOCKED_Z_MOTOR) Z_STEP_WRITE(v);                                                                                                          \
+      if (!LOCKED_Z2_MOTOR) Z2_STEP_WRITE(v);                                                                                                        \
+      if (!LOCKED_Z3_MOTOR) Z3_STEP_WRITE(v);                                                                                                        \
+      if (!LOCKED_Z4_MOTOR) Z4_STEP_WRITE(v);                                                                                                        \
+    }                                                                                                                                                \
+    else {                                                                                                                                           \
+      Z_STEP_WRITE(v);                                                                                                                               \
+      Z2_STEP_WRITE(v);                                                                                                                              \
+      Z3_STEP_WRITE(v);                                                                                                                              \
+      Z4_STEP_WRITE(v);                                                                                                                              \
+    }
+#endif
+
+
 #if ENABLED(X_DUAL_STEPPER_DRIVERS)
   #define X_APPLY_DIR(v,Q) do{ X_DIR_WRITE(v); X2_DIR_WRITE((v) != INVERT_X2_VS_X_DIR); }while(0)
   #if ENABLED(DUAL_X_CARRIAGE)
@@ -220,6 +244,9 @@ volatile long Stepper::endstops_trigsteps[XYZ];
   #else
     #define Z_APPLY_STEP(v,Q) do{ Z_STEP_WRITE(v); Z2_STEP_WRITE(v); }while(0)
   #endif
+#elif ENABLED(Z_QUAD_STEPPER_DRIVERS)
+  #define Z_APPLY_DIR(v,Q) do{ Z_DIR_WRITE(v); Z2_DIR_WRITE(v); Z3_DIR_WRITE(v); Z4_DIR_WRITE(v);}while(0)
+  #define Z_APPLY_STEP(v,Q) do{ QUAD_Z_APPLY_STEP(v) }while(0)
 #else
   #define Z_APPLY_DIR(v,Q) Z_DIR_WRITE(v)
   #define Z_APPLY_STEP(v,Q) Z_STEP_WRITE(v)

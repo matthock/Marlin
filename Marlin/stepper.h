@@ -90,7 +90,7 @@ class Stepper {
       static bool abort_on_endstop_hit;
     #endif
 
-    #if ENABLED(X_DUAL_ENDSTOPS) || ENABLED(Y_DUAL_ENDSTOPS) || ENABLED(Z_DUAL_ENDSTOPS)
+    #if ENABLED(X_DUAL_ENDSTOPS) || ENABLED(Y_DUAL_ENDSTOPS) || ENABLED(Z_DUAL_ENDSTOPS) || ENABLED(Z_QUAD_STEPPER_DRIVERS)
       static bool performing_homing;
     #endif
 
@@ -115,6 +115,9 @@ class Stepper {
     #endif
     #if ENABLED(Z_DUAL_ENDSTOPS)
       static bool locked_z_motor, locked_z2_motor;
+    #endif
+    #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+      static bool locked_z_motor, locked_z2_motor, locked_z3_motor, locked_z4_motor;
     #endif
 
     // Counter variables for the Bresenham line tracer
@@ -275,7 +278,13 @@ class Stepper {
       FORCE_INLINE static void set_z_lock(const bool state) { locked_z_motor = state; }
       FORCE_INLINE static void set_z2_lock(const bool state) { locked_z2_motor = state; }
     #endif
-
+    #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+      FORCE_INLINE static void set_homing_flag_z(const bool state) { performing_homing = state; }
+      FORCE_INLINE static void set_z_lock(const bool state) { locked_z_motor = state; }
+      FORCE_INLINE static void set_z2_lock(const bool state) { locked_z2_motor = state; }
+      FORCE_INLINE static void set_z3_lock(const bool state) { locked_z3_motor = state; }
+      FORCE_INLINE static void set_z4_lock(const bool state) { locked_z4_motor = state; }
+    #endif
     #if ENABLED(BABYSTEPPING)
       static void babystep(const AxisEnum axis, const bool direction); // perform a short step with a single stepper motor, outside of any convention
     #endif

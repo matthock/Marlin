@@ -51,6 +51,7 @@
  * G3   - CCW ARC
  * G4   - Dwell S<seconds> or P<milliseconds>
  * G5   - Cubic B-spline with XYZE destination and IJPQ offsets
+ * G6   - Move individual Z motor
  * G10  - Retract filament according to settings of M207 (Requires FWRETRACT)
  * G11  - Retract recover filament according to settings of M208 (Requires FWRETRACT)
  * G12  - Clean tool (Requires NOZZLE_CLEAN_FEATURE)
@@ -183,6 +184,7 @@
  * M350 - Set microstepping mode. (Requires digital microstepping pins.)
  * M351 - Toggle MS1 MS2 pins directly. (Requires digital microstepping pins.)
  * M355 - Set Case Light on/off and set brightness. (Requires CASE_LIGHT_PIN)
+ * M356 - Set Case Fan on/off and set speed. (Requires CASE_FAN_PIN)
  * M380 - Activate solenoid on active extruder. (Requires EXT_SOLENOID)
  * M381 - Disable all solenoids. (Requires EXT_SOLENOID)
  * M400 - Finish all moves.
@@ -2373,6 +2375,31 @@ static void clean_up_after_endstop_or_probe_move() {
 
 #endif // HAS_BED_PROBE
 
+#if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+  inline void move_quad_z(float z_dest, const bool lock_z1, const bool lock_z2, const bool lock_z3, const bool lock_z4){
+    stepper.synchronize();
+    set_current_from_steppers_for_axis(ALL_AXES);
+
+    // Sync the planner to where the steppers stopped
+    SYNC_PLAN_POSITION_KINEMATIC();
+
+    stepper.set_homing_flag_z(true);
+    stepper.set_z_lock(lock_z1);
+    stepper.set_z2_lock(lock_z2);
+    stepper.set_z3_lock(lock_z3);
+    stepper.set_z4_lock(lock_z4);
+
+    z_dest = z_dest + (axis_relative_modes[Z_AXIS] || relative_mode ? current_position[Z_AXIS] : 0);
+    do_blocking_move_to_z(z_dest);
+
+    stepper.set_z_lock(false);
+    stepper.set_z2_lock(false);
+    stepper.set_z3_lock(false);
+    stepper.set_z4_lock(false);
+    stepper.set_homing_flag_z(false);
+  }
+#endif // Z_QUAD_STEPPER_DRIVERS
+
 #if HAS_LEVELING
 
   bool leveling_is_valid() {
@@ -3080,6 +3107,14 @@ static void homeaxis(const AxisEnum axis) {
       SERIAL_EOL();
     }
   #endif
+
+  #if ENABLED(NOZZLE_OFFSET_SWITCH)
+    // Move off Z switch
+    if(axis == Z_AXIS){
+      do_blocking_move_to_z(current_position[Z_AXIS] + 5);
+      do_blocking_move_to_x(current_position[X_AXIS] - 15);
+    }
+  #endif
 } // homeaxis()
 
 #if ENABLED(FWRETRACT)
@@ -3532,6 +3567,34 @@ inline void gcode_G4() {
   }
 
 #endif // BEZIER_CURVE_SUPPORT
+
+#if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+  /** 
+  *     G6 Move individual Z motors
+  */
+
+  inline void gcode_G6() {
+     // Don't allow auto-leveling without homing first
+     if (axis_unhomed_error(true, true, true)) return;
+
+     stepper.synchronize();
+     set_current_from_steppers_for_axis(ALL_AXES);
+
+     // Sync the planner to where the steppers stopped
+     SYNC_PLAN_POSITION_KINEMATIC();
+
+     bool a = parser.seen('A') ? false : true;
+     bool b = parser.seen('B') ? false : true;
+     bool c = parser.seen('C') ? false : true;
+     bool d = parser.seen('D') ? false : true;
+     float z_dest = current_position[Z_AXIS];
+     if(parser.seen('Z')) {
+        z_dest = parser.value_axis_units(Z_AXIS);
+     }
+     move_quad_z(z_dest, a, b, c, d);
+  }
+
+#endif // Z_QUAD_STEPPER_DRIVERS
 
 #if ENABLED(FWRETRACT)
 
@@ -6029,6 +6092,67 @@ void home_all_axes() { gcode_G28(true); }
   }
 
 #endif // DELTA_AUTO_CALIBRATION
+
+#if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+
+  static void gcode_G34() {
+    // Move Z up before probing
+    do_blocking_move_to_z(5.0);
+
+    bool measure_only = parser.seen('M');
+
+    float z_mea[4] = { 0.0 };
+    float z_corr[4] = { 0.0 };
+
+    SYNC_PLAN_POSITION_KINEMATIC();
+
+    z_mea[2] = probe_pt(RIGHT_LEVELING_POSITION, BACK_LEVELING_POSITION, false, 1);
+    z_mea[3] = probe_pt(RIGHT_LEVELING_POSITION, FRONT_LEVELING_POSITION, false, 1);
+    z_mea[0] = probe_pt(LEFT_LEVELING_POSITION, FRONT_LEVELING_POSITION, false, 1);
+    z_mea[1] = probe_pt(LEFT_LEVELING_POSITION, BACK_LEVELING_POSITION, false, 1);
+
+    z_corr[0] = z_mea[0] + (z_mea[0] - z_mea[2]);
+    z_corr[2] = z_mea[2] + (z_mea[2] - z_mea[0]);
+    z_corr[1] = z_mea[1] + (z_mea[1] - z_mea[3]);
+    z_corr[3] = z_mea[3] + (z_mea[3] - z_mea[1]);
+
+    SERIAL_PROTOCOLLNPGM("Measured:");
+    SERIAL_PROTOCOL_F(z_mea[1], 3);
+    SERIAL_PROTOCOLPGM(" | ");
+    SERIAL_PROTOCOL_F(z_mea[2], 3);
+    SERIAL_EOL();
+    SERIAL_PROTOCOLPGM("---------------");
+    SERIAL_EOL();
+    SERIAL_PROTOCOL_F(z_mea[0], 3);
+    SERIAL_PROTOCOLPGM(" | ");
+    SERIAL_PROTOCOL_F(z_mea[3], 3);
+    SERIAL_EOL();
+    SERIAL_PROTOCOLLNPGM("Corrections:");
+    SERIAL_PROTOCOL_F(z_corr[1], 3);
+    SERIAL_PROTOCOLPGM(" | ");
+    SERIAL_PROTOCOL_F(z_corr[2], 3);
+    SERIAL_EOL();
+    SERIAL_PROTOCOLPGM("---------------");
+    SERIAL_EOL();
+    SERIAL_PROTOCOL_F(z_corr[0], 3);
+    SERIAL_PROTOCOLPGM(" | ");
+    SERIAL_PROTOCOL_F(z_corr[3], 3);
+    SERIAL_EOL();
+
+    if(!measure_only){
+      // Lock up the steppers
+      const bool relative_mode_backup = relative_mode;
+      relative_mode = true;
+
+      move_quad_z(z_corr[0], false,true,true,true);
+      move_quad_z(z_corr[1], true,false,true,true);
+      move_quad_z(z_corr[2], true,true,false,true);
+      move_quad_z(z_corr[3], true,true,true,false);
+
+      relative_mode = relative_mode_backup;
+    }
+  }
+#endif // Z_QUAD_STEPPER_DRIVERS
 
 #if ENABLED(G38_PROBE_TARGET)
 
@@ -8536,6 +8660,18 @@ inline void gcode_M115() {
       #endif
     );
 
+    // CASE FAN (M356)
+    cap_line(PSTR("TOGGLE_FAN")
+      #if HAS_CASE_FAN
+        , true
+      #endif
+    );
+    cap_line(PSTR("CASE_FAN_SPEED")
+      #if HAS_CASE_FAN
+        , USEABLE_HARDWARE_PWM(CASE_FAN_PIN)
+      #endif
+    );
+
     // EMERGENCY_PARSER (M108, M112, M410)
     cap_line(PSTR("EMERGENCY_PARSER")
       #if ENABLED(EMERGENCY_PARSER)
@@ -10920,6 +11056,30 @@ inline void gcode_M907() {
   }
 #endif // HAS_CASE_LIGHT
 
+#if HAS_CASE_FAN
+  #ifndef INVERT_CASE_FAN
+    #define INVERT_CASE_FAN false
+  #endif
+  uint8_t case_fan_speed;  // LCD routine wants INT
+  bool case_fan_on;
+
+  void update_case_fan() {
+    pinMode(CASE_FAN_PIN, OUTPUT); // digitalWrite doesn't set the port mode
+    if (case_fan_on) {
+      if (USEABLE_HARDWARE_PWM(CASE_FAN_PIN))
+        analogWrite(CASE_FAN_PIN, INVERT_CASE_FAN ? 255 - case_fan_speed : case_fan_speed);
+      else
+        WRITE(CASE_FAN_PIN, INVERT_CASE_FAN ? LOW : HIGH);
+    }
+    else {
+      if (USEABLE_HARDWARE_PWM(CASE_FAN_PIN))
+        analogWrite(CASE_FAN_PIN, INVERT_CASE_FAN ? 255 : 0);
+      else
+        WRITE(CASE_FAN_PIN, INVERT_CASE_FAN ? HIGH : LOW);
+    }
+  }
+#endif // HAS_CASE_FAN
+
 /**
  * M355: Turn case light on/off and set brightness
  *
@@ -10953,6 +11113,41 @@ inline void gcode_M355() {
     SERIAL_ERROR_START();
     SERIAL_ERRORLNPGM(MSG_ERR_M355_NONE);
   #endif // HAS_CASE_LIGHT
+}
+
+/**
+ * M356: Turn case fan on/off and set speed
+ *
+ *   P<byte>  Set case fan speed (PWM pin required - ignored otherwise)
+ *
+ *   S<bool>  Set case fan on/off
+ *
+ *   When S turns on the fan on a PWM pin then the current speed level is used/restored
+ *
+ *   M356 P200 S0 turns off the fan & sets the speed level
+ *   M356 S1 turns on the fan with a speed of 200 (assuming a PWM pin)
+ */
+inline void gcode_M356() {
+  #if HAS_CASE_FAN
+    uint8_t args = 0;
+    if (parser.seenval('P')) ++args, case_fan_speed = parser.value_byte();
+    if (parser.seenval('S')) ++args, case_fan_on = parser.value_bool();
+    if (args) update_case_fan();
+
+    // always report case light status
+    SERIAL_ECHO_START();
+    if (!case_fan_on) {
+      SERIAL_ECHOLN("Case fan: off");
+    }
+    else {
+      if (!USEABLE_HARDWARE_PWM(CASE_FAN_PIN)) SERIAL_ECHOLN("Case fan: on");
+      else SERIAL_ECHOLNPAIR("Case fan: ", (int)case_fan_speed);
+    }
+
+  #else
+    SERIAL_ERROR_START();
+    SERIAL_ERRORLNPGM(MSG_ERR_M356_NONE);
+  #endif // HAS_CASE_FAN
 }
 
 #if ENABLED(MIXING_EXTRUDER)
@@ -11711,6 +11906,14 @@ void process_parsed_command() {
           break;
 
       #endif // DELTA_AUTO_CALIBRATION
+
+      #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+
+          case 34: // G34: 4 Z motor leveling
+            gcode_G34();
+            break;
+
+      #endif
 
       #if ENABLED(G38_PROBE_TARGET)
         case 38: // G38.2 & G38.3
@@ -14399,6 +14602,12 @@ void setup() {
     case_light_on = CASE_LIGHT_DEFAULT_ON;
     case_light_brightness = CASE_LIGHT_DEFAULT_BRIGHTNESS;
     update_case_light();
+  #endif
+
+  #if HAS_CASE_FAN
+    case_fan_on = CASE_FAN_DEFAULT_ON;
+    case_fan_speed = CASE_FAN_DEFAULT_SPEED;
+    update_case_fan();
   #endif
 
   #if ENABLED(SPINDLE_LASER_ENABLE)
