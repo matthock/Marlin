@@ -1057,6 +1057,14 @@ void Stepper::init() {
       Z2_ENABLE_INIT;
       if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
     #endif
+    #if ENABLED(Z_QUAD_STEPPER_DRIVERS) && HAS_Z2_ENABLE && HAS_Z3_ENABLE && HAS_Z4_ENABLE
+      Z2_ENABLE_INIT;
+      if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
+      Z3_ENABLE_INIT;
+      if (!Z_ENABLE_ON) Z3_ENABLE_WRITE(HIGH);
+      Z4_ENABLE_INIT;
+      if (!Z_ENABLE_ON) Z4_ENABLE_WRITE(HIGH);
+    #endif
   #endif
   #if HAS_E0_ENABLE
     E0_ENABLE_INIT;

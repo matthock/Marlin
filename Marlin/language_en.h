@@ -156,6 +156,9 @@
 #ifndef MSG_LEVEL_BED
   #define MSG_LEVEL_BED                       _UxGT("Level bed")
 #endif
+#ifndef MSG_LEVEL_GANTRY 
+  #define MSG_LEVEL_GANTRY                    _UxGT("Level gantry")
+#endif
 #ifndef MSG_LEVEL_CORNERS
   #define MSG_LEVEL_CORNERS                   _UxGT("Level corners")
 #endif

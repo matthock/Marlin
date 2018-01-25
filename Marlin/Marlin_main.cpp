@@ -4032,6 +4032,11 @@ inline void gcode_G4() {
  */
 inline void gcode_G28(const bool always_home_all) {
 
+  #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+    // We need to stiffen up the Z. May as well enable all the motors
+    enable_all_steppers();
+  #endif
+
   #if ENABLED(DEBUG_LEVELING_FEATURE)
     if (DEBUGGING(LEVELING)) {
       SERIAL_ECHOLNPGM(">>> gcode_G28");
