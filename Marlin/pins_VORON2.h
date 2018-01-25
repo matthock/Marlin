@@ -30,13 +30,15 @@
 
 #include "pins_RAMPS.h"
 
+// D10 D9 D8 on Ramps
 #define HEATER_1_PIN	   10
-#define HEATER_2_PIN	   9
+#define CASE_FAN_PIN 	   9
+#define CONTROLLER_FAN_PIN 8
+
+// Servo outputs connected to ether expander or second RAMPs
 #define HEATER_BED_PIN	   11
 #define FAN_PIN			   6
 #define E0_AUTO_FAN_PIN	   5
-#define E1_AUTO_FAN_PIN	   5
-#define CONTROLLER_FAN_PIN 8
 
 #define Z_MIN_PROBE_PIN    19 // Z_MAX
 
@@ -51,16 +53,5 @@
 #define Z4_STEP_PIN        57
 #define Z4_DIR_PIN         66
 #define Z4_ENABLE_PIN      58
-
-// Flipping X and Y
-#define Y_STEP_PIN         54
-#define Y_DIR_PIN          55
-#define Y_ENABLE_PIN       38
-#define Y_CS_PIN           53
-
-#define X_STEP_PIN         60
-#define X_DIR_PIN          61
-#define X_ENABLE_PIN       56
-#define X_CS_PIN           49
 
 
