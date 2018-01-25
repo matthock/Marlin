@@ -7,8 +7,7 @@ For full release notes and readme text, please visit the [source repo for Marlin
 ## Changes/additions
 - Added Z quad motor control with indivitual motor lockout
 - Added G6 command for moving individual Z motors
-- Added a non-Delta G32 command for plane-matching the XY gantry and the bed on startup
-- Added Z switch used as a tool offset switch (a take on SAFE_Z_HOMEING where you position the nozzle over the Z limit switch)
+- Added G34 command for plane-matching the XY gantry and the bed using a probe
 - Added case fan option (M356 and/or LCD menu)
 
 ## License
