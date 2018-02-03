@@ -792,7 +792,7 @@
 #define Z_MIN_POS 0
 #define X_MAX_POS 254
 #define Y_MAX_POS 254
-#define Z_MAX_POS 210
+#define Z_MAX_POS 230
 
 // If enabled, axes won't move below MIN_POS in response to movement commands.
 //#define MIN_SOFTWARE_ENDSTOPS

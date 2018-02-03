@@ -1410,27 +1410,52 @@ void Stepper::report_positions() {
           const uint8_t old_x_dir_pin = X_DIR_READ,
                         old_y_dir_pin = Y_DIR_READ,
                         old_z_dir_pin = Z_DIR_READ;
+                        #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+                          const uint8_t old_z1_dir_pin = Z1_DIR_READ,
+                                        old_z2_dir_pin = Z2_DIR_READ,
+                                        old_z3_dir_pin = Z3_DIR_READ;
+                        #endif
 
           X_DIR_WRITE(INVERT_X_DIR ^ z_direction);
           Y_DIR_WRITE(INVERT_Y_DIR ^ z_direction);
           Z_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
+          #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+            Z1_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
+            Z2_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
+            Z3_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
+          #endif
 
           _SAVE_START;
 
           X_STEP_WRITE(!INVERT_X_STEP_PIN);
           Y_STEP_WRITE(!INVERT_Y_STEP_PIN);
           Z_STEP_WRITE(!INVERT_Z_STEP_PIN);
+          #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+            Z1_STEP_WRITE(!INVERT_Z_STEP_PIN);
+            Z2_STEP_WRITE(!INVERT_Z_STEP_PIN);
+            Z3_STEP_WRITE(!INVERT_Z_STEP_PIN);
+          #endif
 
           _PULSE_WAIT;
 
           X_STEP_WRITE(INVERT_X_STEP_PIN);
           Y_STEP_WRITE(INVERT_Y_STEP_PIN);
           Z_STEP_WRITE(INVERT_Z_STEP_PIN);
+          #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+            Z1_STEP_WRITE(INVERT_Z_STEP_PIN);
+            Z2_STEP_WRITE(INVERT_Z_STEP_PIN);
+            Z3_STEP_WRITE(INVERT_Z_STEP_PIN);
+          #endif
 
           // Restore direction bits
           X_DIR_WRITE(old_x_dir_pin);
           Y_DIR_WRITE(old_y_dir_pin);
           Z_DIR_WRITE(old_z_dir_pin);
+          #if ENABLED(Z_QUAD_STEPPER_DRIVERS)
+            Z1_DIR_WRITE(old_z1_dir_pin);
+            Z2_DIR_WRITE(old_z2_dir_pin);
+            Z3_DIR_WRITE(old_z3_dir_pin);
+          #endif
 
         #endif
 

@@ -2212,6 +2212,8 @@ static void clean_up_after_endstop_or_probe_move() {
    */
   static float run_z_probe() {
 
+    endstops.enable_z_probe(true);
+
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS(">>> run_z_probe", current_position);
     #endif
@@ -2263,6 +2265,8 @@ static void clean_up_after_endstop_or_probe_move() {
       }
     #endif
 
+    endstops.enable_z_probe(false);
+
     #if MULTIPLE_PROBING > 2
 
       // Return the average value of all probes
@@ -2292,7 +2296,10 @@ static void clean_up_after_endstop_or_probe_move() {
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS("<<< run_z_probe", current_position);
     #endif
+
   }
+
+
 
   /**
    * - Move to the given XY
