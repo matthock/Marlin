@@ -6120,9 +6120,13 @@ void home_all_axes() { gcode_G28(true); }
     SYNC_PLAN_POSITION_KINEMATIC();
 
     z_mea[2] = probe_pt(RIGHT_LEVELING_POSITION, BACK_LEVELING_POSITION, false, 1);
-    z_mea[3] = probe_pt(RIGHT_LEVELING_POSITION, FRONT_LEVELING_POSITION, false, 1);
-    z_mea[0] = probe_pt(LEFT_LEVELING_POSITION, FRONT_LEVELING_POSITION, false, 1);
-    z_mea[1] = probe_pt(LEFT_LEVELING_POSITION, BACK_LEVELING_POSITION, false, 1);
+    z_mea[3] = isnan(z_mea[2]) ? NAN : probe_pt(RIGHT_LEVELING_POSITION, FRONT_LEVELING_POSITION, false, 1);
+    z_mea[0] = isnan(z_mea[3]) ? NAN : probe_pt(LEFT_LEVELING_POSITION, FRONT_LEVELING_POSITION, false, 1);
+    z_mea[1] = isnan(z_mea[0]) ? NAN : probe_pt(LEFT_LEVELING_POSITION, BACK_LEVELING_POSITION, false, 1);
+
+    if (isnan(z_mea[1])) {
+      return;
+    }
 
     center = (z_mea[0] + z_mea[1] + z_mea[2] + z_mea[3]) / 4;
 
